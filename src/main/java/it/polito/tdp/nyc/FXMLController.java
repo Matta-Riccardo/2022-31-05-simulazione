@@ -5,8 +5,13 @@
 package it.polito.tdp.nyc;
 
 import java.net.URL;
+import java.util.List;
 import java.util.ResourceBundle;
+
+import it.polito.tdp.nyc.model.City;
+import it.polito.tdp.nyc.model.CityDistance;
 import it.polito.tdp.nyc.model.Model;
+import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -15,6 +20,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.cell.PropertyValueFactory;
 
 public class FXMLController {
 	
@@ -39,7 +45,7 @@ public class FXMLController {
     private ComboBox<String> cmbProvider; // Value injected by FXMLLoader
 
     @FXML // fx:id="cmbQuartiere"
-    private ComboBox<?> cmbQuartiere; // Value injected by FXMLLoader
+    private ComboBox<City> cmbQuartiere; // Value injected by FXMLLoader
 
     @FXML // fx:id="txtMemoria"
     private TextField txtMemoria; // Value injected by FXMLLoader
@@ -48,27 +54,83 @@ public class FXMLController {
     private TextArea txtResult; // Value injected by FXMLLoader
     
     @FXML // fx:id="clQuartiere"
-    private TableColumn<?, ?> clQuartiere; // Value injected by FXMLLoader
+    private TableColumn<CityDistance, String> clQuartiere; // Value injected by FXMLLoader
  
     @FXML // fx:id="clDistanza"
-    private TableColumn<?, ?> clDistanza; // Value injected by FXMLLoader
+    private TableColumn<CityDistance, Double> clDistanza; // Value injected by FXMLLoader
     
     @FXML // fx:id="tblQuartieri"
-    private TableView<?> tblQuartieri; // Value injected by FXMLLoader
+    private TableView<CityDistance> tblQuartieri; // Value injected by FXMLLoader
 
     @FXML
     void doCreaGrafo(ActionEvent event) {
+    	txtResult.clear();
+    	cmbQuartiere.getItems().clear();
+    	
+    	String provider = cmbProvider.getValue();
+    	
+    	if(provider == null) {
+    		txtResult.appendText("Seleziona un 'Provider' dalla tendina prima di\nprocedere con la creazione del suddetto grafo\n");
+    		return;
+    	}
+    	
+    	this.model.creaGrafo(provider);
+    	txtResult.appendText("Grafo creato!\n");
+    	txtResult.appendText(String.format("# VERTICI: %d\n# ARCHI: %d\n", this.model.nVertici(), this.model.nArchi()));
+    	cmbQuartiere.getItems().addAll(this.model.getVertici());
     	
     }
 
     @FXML
     void doQuartieriAdiacenti(ActionEvent event) {
     	
+    	txtResult.clear();
+    	City scelto = cmbQuartiere.getValue();
+    	
+    	if(scelto == null) {
+    		txtResult.appendText("Seleziona un quartiere!\n");
+    		return;
+    	}
+    	
+    	List<CityDistance> distanze = model.getCityDistances(scelto);
+    	tblQuartieri.setItems(FXCollections.observableArrayList(distanze));
+    	
+    	
+    	
     }
 
     @FXML
     void doSimula(ActionEvent event) {
 
+    	txtResult.clear();
+    	
+    	City scelto = cmbQuartiere.getValue();
+    	
+    	if(scelto == null) {
+    		txtResult.appendText("Selezionare un quartiere dalla tendina prima di procedere con la simulazione\n");
+    		return;
+    	}
+    	
+    	int N = 0;
+    	try {
+    		N = Integer.parseInt(txtMemoria.getText());
+    		
+    	}catch(NumberFormatException e) {
+    		e.printStackTrace();
+    		txtResult.appendText("Per favore inserisci un numero intero ragionevole\n");
+    		return;
+    	}
+    	
+    	model.simula(scelto, N);
+    	
+    	txtResult.appendText("Durata simulazione in minuti: "+model.getDurata()+"\n");
+    	txtResult.appendText("Impieghi dei tecnici: "+model.getRevisionati()+"\n");
+    	int pos = 0;
+    	for(Integer i : model.getRevisionati()) {
+    		txtResult.appendText("Il tecnico "+pos+" ha eseguito "+i+"revisioni\n");
+    		pos++;
+    	}
+    	
     }
 
     @FXML // This method is called by the FXMLLoader when initialization is complete
@@ -83,10 +145,14 @@ public class FXMLController {
         assert clDistanza != null : "fx:id=\"clDistanza\" was not injected: check your FXML file 'Scene.fxml'.";
         assert clQuartiere != null : "fx:id=\"clQuartiere\" was not injected: check your FXML file 'Scene.fxml'.";
 
+        
+        clQuartiere.setCellValueFactory(new PropertyValueFactory<CityDistance, String>("nome"));
+        clDistanza.setCellValueFactory(new PropertyValueFactory<CityDistance, Double>("distance"));
     }
     
     public void setModel(Model model) {
     	this.model = model;
+    	cmbProvider.getItems().addAll(this.model.getProviders());
     }
 
 }
